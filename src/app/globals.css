@@ -1,0 +1,132 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* Indian Restaurant Theme - Dark Mode with Warm Colors */
+  --background: #0f0a0a;
+  --background-secondary: #1a1412;
+  --background-tertiary: #252017;
+  --foreground: #f5f2e8;
+  --foreground-secondary: #e8e2d4;
+  --foreground-muted: #c4b8a6;
+  
+  /* Brand Colors - Inspired by Indian Aesthetics */
+  --saffron: #ff9500;
+  --saffron-light: #ffb347;
+  --saffron-dark: #cc7700;
+  --emerald: #10b981;
+  --emerald-light: #34d399;
+  --emerald-dark: #059669;
+  --crimson: #dc2626;
+  --crimson-light: #f87171;
+  --crimson-dark: #991b1b;
+  --gold: #f59e0b;
+  --gold-light: #fbbf24;
+  --gold-dark: #d97706;
+  
+  /* Glass Morphism */
+  --glass-bg: rgba(26, 20, 18, 0.8);
+  --glass-border: rgba(245, 242, 232, 0.1);
+  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+  
+  /* Traditional Pattern Colors */
+  --pattern-primary: rgba(255, 149, 0, 0.1);
+  --pattern-secondary: rgba(16, 185, 129, 0.05);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-background-secondary: var(--background-secondary);
+  --color-background-tertiary: var(--background-tertiary);
+  --color-foreground: var(--foreground);
+  --color-foreground-secondary: var(--foreground-secondary);
+  --color-foreground-muted: var(--foreground-muted);
+  
+  --color-saffron: var(--saffron);
+  --color-saffron-light: var(--saffron-light);
+  --color-saffron-dark: var(--saffron-dark);
+  --color-emerald: var(--emerald);
+  --color-emerald-light: var(--emerald-light);
+  --color-emerald-dark: var(--emerald-dark);
+  --color-crimson: var(--crimson);
+  --color-crimson-light: var(--crimson-light);
+  --color-crimson-dark: var(--crimson-dark);
+  --color-gold: var(--gold);
+  --color-gold-light: var(--gold-light);
+  --color-gold-dark: var(--gold-dark);
+  
+  --font-sans: 'Inter', 'Noto Sans Devanagari', system-ui, sans-serif;
+  --font-devanagari: 'Noto Sans Devanagari', system-ui, sans-serif;
+}
+
+* {
+  border-color: var(--glass-border);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+}
+
+/* Glass Morphism Utility Classes */
+.glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: var(--glass-shadow);
+}
+
+.glass-hover {
+  transition: all 0.3s ease;
+}
+
+.glass-hover:hover {
+  background: rgba(26, 20, 18, 0.9);
+  border-color: var(--saffron);
+  transform: translateY(-2px);
+}
+
+/* Traditional Indian Pattern Background */
+.pattern-bg {
+  background-image: 
+    radial-gradient(circle at 25px 25px, var(--pattern-primary) 2px, transparent 2px),
+    radial-gradient(circle at 75px 75px, var(--pattern-secondary) 2px, transparent 2px);
+  background-size: 100px 100px;
+}
+
+/* Voice Animation Utilities */
+.voice-pulse {
+  animation: voice-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes voice-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--saffron);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--saffron-light);
+}
