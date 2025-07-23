@@ -1,13 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import dynamic from 'next/dynamic';
+import { ToastWrapper } from "@/components/ui/ToastWrapper";
 import "./globals.css";
-
-// Import ToastContainer dynamically to avoid SSR issues
-const ToastContainer = dynamic(
-  () => import('@/components/ui/Toast').then(mod => mod.ToastContainer),
-  { ssr: false }
-);
 
 const inter = Inter({
   subsets: ["latin"],
@@ -20,8 +14,12 @@ export const metadata: Metadata = {
   keywords: ["restaurant", "voice", "AI", "management", "India", "food", "orders"],
   authors: [{ name: "Restaurant AI Team" }],
   robots: "index, follow",
-  viewport: "width=device-width, initial-scale=1",
-  themeColor: "#ff9500",
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#ff9500',
 };
 
 export default function RootLayout({
@@ -41,7 +39,7 @@ export default function RootLayout({
       </head>
       <body className={`${inter.variable} antialiased`}>
         {children}
-        <ToastContainer />
+        <ToastWrapper />
       </body>
     </html>
   );
