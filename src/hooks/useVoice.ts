@@ -50,6 +50,11 @@ export function useVoice() {
       setProcessing(true);
       setCurrentCommand(command.command);
       
+      // Skip interim commands
+      if (command.action.subtype === 'interim') {
+        return;
+      }
+      
       // Execute the voice command
       const response = await executeVoiceCommand(command);
       command.response = response;
@@ -59,6 +64,11 @@ export function useVoice() {
       setLastResponse(response);
       setError(null);
       
+      // Show success toast
+      if (typeof window !== 'undefined' && window.showToast) {
+        window.showToast('success', 'Command Executed', response, 4000);
+      }
+      
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Voice command failed';
       command.response = errorMessage;
@@ -66,6 +76,11 @@ export function useVoice() {
       
       addCommand(command);
       setError(errorMessage);
+      
+      // Show error toast
+      if (typeof window !== 'undefined' && window.showToast) {
+        window.showToast('error', 'Command Failed', errorMessage, 5000);
+      }
     } finally {
       setProcessing(false);
       setCurrentCommand('');
@@ -100,25 +115,53 @@ export function useVoice() {
     switch (subtype) {
       case 'mark_ready':
         if (params.tableNumber) {
-          // Find orders for the table and mark them as ready
-          const orders = useOrderStore.getState().getOrdersByTable(`table-${params.tableNumber}`);
-          for (const order of orders) {
-            if (order.status === 'preparing') {
-              updateOrderStatus(order.id, 'ready');
-            }
+          // Get current orders state
+          const { orders } = useOrderStore.getState();
+          const tableOrders = orders.filter(o => 
+            o.tableId === `table-${params.tableNumber}` && 
+            (o.status === 'preparing' || o.status === 'pending')
+          );
+          
+          if (tableOrders.length === 0) {
+            return `Table ${params.tableNumber} पर कोई active order नहीं है`;
           }
+          
+          // Mark all preparing orders as ready
+          for (const order of tableOrders) {
+            updateOrderStatus(order.id, 'ready');
+            console.log(`Marked order ${order.id} as ready`);
+          }
+          
+          // Emit socket event for real-time updates
+          if (typeof window !== 'undefined' && (window as any).socket) {
+            (window as any).socket.emit('order:update', {
+              tableId: `table-${params.tableNumber}`,
+              status: 'ready',
+              timestamp: new Date()
+            });
+          }
+          
           return `Table ${params.tableNumber} के सभी orders ready mark कर दिए गए हैं`;
         }
         throw new Error('Table number not specified');
 
       case 'mark_preparing':
         if (params.tableNumber) {
-          const orders = useOrderStore.getState().getOrdersByTable(`table-${params.tableNumber}`);
-          for (const order of orders) {
-            if (order.status === 'pending') {
-              updateOrderStatus(order.id, 'preparing');
-            }
+          const { orders } = useOrderStore.getState();
+          const tableOrders = orders.filter(o => 
+            o.tableId === `table-${params.tableNumber}` && 
+            o.status === 'pending'
+          );
+          
+          if (tableOrders.length === 0) {
+            return `Table ${params.tableNumber} पर कोई pending order नहीं है`;
           }
+          
+          for (const order of tableOrders) {
+            updateOrderStatus(order.id, 'preparing');
+            console.log(`Marked order ${order.id} as preparing`);
+          }
+          
           return `Table ${params.tableNumber} के orders preparing में move कर दिए गए हैं`;
         }
         throw new Error('Table number not specified');
@@ -136,11 +179,28 @@ export function useVoice() {
           };
           
           // Find or create order for the table
-          const orders = useOrderStore.getState().getOrdersByTable(`table-${params.tableNumber}`);
-          let targetOrder = orders.find(o => o.status !== 'completed');
+          const { orders } = useOrderStore.getState();
+          const targetOrder = orders.find(o => 
+            o.tableId === `table-${params.tableNumber}` && 
+            o.status !== 'completed'
+          );
           
           if (targetOrder) {
             addItemToOrder(targetOrder.id, newItem);
+            console.log(`Added item to order ${targetOrder.id}`);
+          } else {
+            // Create new order if none exists
+            const newOrder = {
+              id: `order-${Date.now()}`,
+              tableId: `table-${params.tableNumber}`,
+              items: [newItem],
+              status: 'pending' as const,
+              totalAmount: params.menuItem.price * (params.quantity || 1),
+              orderTime: new Date(),
+              waiterName: 'Voice Assistant'
+            };
+            useOrderStore.getState().addOrder(newOrder);
+            console.log('Created new order via voice');
           }
           
           return `${params.menuItem.name} को table ${params.tableNumber} के order में add कर दिया गया है`;
@@ -157,6 +217,16 @@ export function useVoice() {
       case 'mark_cleaning':
         if (params.tableNumber) {
           updateTableStatus(`table-${params.tableNumber}`, 'cleaning');
+          
+          // Emit socket event
+          if (typeof window !== 'undefined' && (window as any).socket) {
+            (window as any).socket.emit('table:statusChange', {
+              tableId: `table-${params.tableNumber}`,
+              status: 'cleaning',
+              timestamp: new Date()
+            });
+          }
+          
           return `Table ${params.tableNumber} को cleaning के लिए mark कर दिया गया है`;
         }
         throw new Error('Table number not specified');
@@ -164,6 +234,16 @@ export function useVoice() {
       case 'mark_occupied':
         if (params.tableNumber) {
           updateTableStatus(`table-${params.tableNumber}`, 'occupied');
+          
+          // Emit socket event
+          if (typeof window !== 'undefined' && (window as any).socket) {
+            (window as any).socket.emit('table:statusChange', {
+              tableId: `table-${params.tableNumber}`,
+              status: 'occupied',
+              timestamp: new Date()
+            });
+          }
+          
           return `Table ${params.tableNumber} को occupied mark कर दिया गया है`;
         }
         throw new Error('Table number not specified');
@@ -171,6 +251,16 @@ export function useVoice() {
       case 'mark_available':
         if (params.tableNumber) {
           updateTableStatus(`table-${params.tableNumber}`, 'available');
+          
+          // Emit socket event
+          if (typeof window !== 'undefined' && (window as any).socket) {
+            (window as any).socket.emit('table:statusChange', {
+              tableId: `table-${params.tableNumber}`,
+              status: 'available',
+              timestamp: new Date()
+            });
+          }
+          
           return `Table ${params.tableNumber} अब available है`;
         }
         throw new Error('Table number not specified');
@@ -184,13 +274,44 @@ export function useVoice() {
     switch (subtype) {
       case 'update':
         if (params.itemName) {
-          // This is a simplified implementation
-          // In a real app, you'd have more sophisticated inventory management
-          return `${params.itemName} की inventory को update करने का alert भेज दिया गया है`;
+          // Update inventory quantity if specified
+          if (params.quantity !== undefined) {
+            updateItemQuantity(params.itemName, params.quantity);
+          }
+          
+          // Emit socket event
+          if (typeof window !== 'undefined' && (window as any).socket) {
+            (window as any).socket.emit('inventory:alert', {
+              itemName: params.itemName,
+              alertType: 'manual_update',
+              quantity: params.quantity,
+              message: `${params.itemName} inventory updated via voice command`,
+              timestamp: new Date()
+            });
+          }
+          
+          return `${params.itemName} की inventory को update कर दिया गया है`;
         }
         throw new Error('Item name not specified');
 
       case 'low_stock_alert':
+        // Add alert to inventory store
+        const alert = {
+          id: `alert-${Date.now()}`,
+          type: 'low_stock' as const,
+          itemId: `item-${Date.now()}`,
+          itemName: params.itemName || 'Multiple items',
+          message: 'Low stock alert generated via voice',
+          severity: 'high' as const,
+          timestamp: new Date()
+        };
+        useInventoryStore.getState().addAlert(alert);
+        
+        // Emit socket event
+        if (typeof window !== 'undefined' && (window as any).socket) {
+          (window as any).socket.emit('inventory:alert', alert);
+        }
+        
         return 'Low stock alert को team को भेज दिया गया है';
 
       default:
@@ -199,18 +320,52 @@ export function useVoice() {
   };
 
   const handleNavigationCommand = async (subtype: string, params: Record<string, any>): Promise<string> => {
-    // This would integrate with Next.js router
-    switch (subtype) {
-      case 'navigate':
-        if (params.page) {
-          // router.push(`/${params.page}`);
-          return `${params.page} page पर navigate कर रहे हैं`;
-        }
-        throw new Error('Page not specified');
+    // Get router instance if in browser
+    if (typeof window !== 'undefined') {
+      const router = require('next/navigation').useRouter();
       
-      default:
-        return 'Navigation command processed';
+      switch (subtype) {
+        case 'navigate':
+          let targetPath = '/';
+          let pageName = '';
+          
+          // Map common navigation requests to routes
+          if (params.page) {
+            const page = params.page.toLowerCase();
+            if (page.includes('dashboard') || page.includes('home')) {
+              targetPath = '/dashboard';
+              pageName = 'Dashboard';
+            } else if (page.includes('kitchen') || page.includes('किचन')) {
+              targetPath = '/kitchen';
+              pageName = 'Kitchen';
+            } else if (page.includes('waiter') || page.includes('वेटर')) {
+              targetPath = '/waiter';
+              pageName = 'Waiter';
+            } else if (page.includes('menu') || page.includes('मेन्यू')) {
+              targetPath = '/menu';
+              pageName = 'Menu';
+            }
+          }
+          
+          // Navigate to the page
+          router.push(targetPath);
+          
+          return `${pageName || params.page} page पर जा रहे हैं`;
+        
+        case 'back':
+          router.back();
+          return 'पिछले page पर वापस जा रहे हैं';
+        
+        case 'refresh':
+          router.refresh();
+          return 'Page refresh हो रहा है';
+        
+        default:
+          return 'Navigation command processed';
+      }
     }
+    
+    return 'Navigation not available';
   };
 
   const handleQueryCommand = async (subtype: string, params: Record<string, any>): Promise<string> => {
@@ -270,12 +425,37 @@ export function useVoice() {
     }
 
     try {
+      // First request microphone permission
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // Stop the stream immediately - we just needed to trigger permission
+      stream.getTracks().forEach(track => track.stop());
+      
+      // Update store state
       startListening();
+      
+      // Initialize and start the voice processor
       const voiceProcessor = getVoiceProcessor();
-      await voiceProcessor.startListening(handleVoiceCommand);
+      
+      // Set up the callback that will receive voice commands
+      await voiceProcessor.startListening(async (command: VoiceCommand) => {
+        // Process the command through our handler
+        await handleVoiceCommand(command);
+      });
+      
+      console.log('Voice recognition started successfully');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to start listening';
-      setError(errorMessage);
+      
+      // Provide user-friendly error messages
+      if (errorMessage.includes('Permission denied') || errorMessage.includes('NotAllowedError')) {
+        setError('Microphone access denied. Please allow microphone permissions to use voice commands.');
+      } else if (errorMessage.includes('NotFoundError')) {
+        setError('No microphone found. Please connect a microphone to use voice commands.');
+      } else {
+        setError(errorMessage);
+      }
+      
       stopListening();
     }
   }, [isSupported, startListening, stopListening, setError, handleVoiceCommand]);
@@ -304,20 +484,69 @@ export function useVoice() {
     }
 
     let animationId: number;
+    let audioContext: AudioContext | null = null;
+    let analyser: AnalyserNode | null = null;
+    let microphone: MediaStreamAudioSourceNode | null = null;
+    let dataArray: Uint8Array | null = null;
     
-    const updateAudioLevel = () => {
-      // Simulate audio level for visual feedback
-      // In a real implementation, you'd get this from the microphone
-      const level = Math.random() * 100;
-      setAudioLevel(level);
-      animationId = requestAnimationFrame(updateAudioLevel);
+    const setupAudioAnalysis = async () => {
+      try {
+        // Get microphone stream
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+        // Create audio context and analyser
+        audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.8;
+        
+        // Connect microphone to analyser
+        microphone = audioContext.createMediaStreamSource(stream);
+        microphone.connect(analyser);
+        
+        // Create data array for frequency data
+        const bufferLength = analyser.frequencyBinCount;
+        dataArray = new Uint8Array(bufferLength);
+        
+        const updateAudioLevel = () => {
+          if (!analyser || !dataArray) return;
+          
+          // Get frequency data
+          analyser.getByteFrequencyData(dataArray);
+          
+          // Calculate average volume
+          const sum = dataArray.reduce((acc, val) => acc + val, 0);
+          const average = sum / dataArray.length;
+          
+          // Normalize to 0-100 range with some amplification
+          const normalizedLevel = Math.min(100, (average / 256) * 200);
+          
+          setAudioLevel(normalizedLevel);
+          animationId = requestAnimationFrame(updateAudioLevel);
+        };
+        
+        updateAudioLevel();
+        
+      } catch (error) {
+        console.error('Failed to setup audio analysis:', error);
+        // Fallback to simulated levels
+        const updateSimulatedLevel = () => {
+          const level = Math.random() * 50 + 25;
+          setAudioLevel(level);
+          animationId = requestAnimationFrame(updateSimulatedLevel);
+        };
+        updateSimulatedLevel();
+      }
     };
-
-    updateAudioLevel();
+    
+    setupAudioAnalysis();
 
     return () => {
       if (animationId) {
         cancelAnimationFrame(animationId);
+      }
+      if (audioContext) {
+        audioContext.close();
       }
     };
   }, [isListening]);
@@ -341,6 +570,7 @@ export function useVoice() {
     // Utils
     getRecentCommands: () => history.slice(0, 10),
     getSuccessfulCommands: () => history.filter(cmd => cmd.success),
-    clearError: () => setError(null)
+    clearError: () => setError(null),
+    processVoiceCommand
   };
 }

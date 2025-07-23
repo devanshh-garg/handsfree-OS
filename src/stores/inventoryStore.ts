@@ -17,6 +17,7 @@ interface InventoryState {
   restockItem: (itemId: string, quantity: number) => void;
   loadInventory: () => Promise<void>;
   saveInventory: () => Promise<void>;
+  addAlert: (alert: InventoryAlert) => void;
   
   // Getters
   getLowStockItems: () => InventoryItem[];
@@ -126,6 +127,10 @@ export const useInventoryStore = create<InventoryState>()(
         new Date(item.expiryDate) <= threeDaysFromNow
       );
     },
+
+    addAlert: (alert: InventoryAlert) => set((state) => {
+      state.alerts.push(alert);
+    }),
 
     generateAlerts: () => set((state) => {
       const alerts: InventoryAlert[] = [];

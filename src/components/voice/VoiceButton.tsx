@@ -163,13 +163,20 @@ export function VoiceButton({
             initial={{ opacity: 0, y: 10, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.9 }}
-            className="absolute top-full mt-2 left-1/2 transform -translate-x-1/2 w-64"
+            className="absolute top-full mt-2 left-1/2 transform -translate-x-1/2 w-64 z-50"
           >
             <div className="glass rounded-lg p-3 shadow-lg">
               {error && (
-                <div className="flex items-center gap-2 text-crimson-light text-sm">
-                  <MicOff className="w-4 h-4" />
-                  <span>{error}</span>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2 text-crimson-light text-sm">
+                    <MicOff className="w-4 h-4" />
+                    <span>{error}</span>
+                  </div>
+                  {error.includes('permission') && (
+                    <div className="text-xs text-foreground-muted">
+                      Click the microphone button in your browser's address bar to allow access
+                    </div>
+                  )}
                 </div>
               )}
               

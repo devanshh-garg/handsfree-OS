@@ -39,12 +39,43 @@ export const useOrderStore = create<OrderState>()(
       updateOrderStatus: (orderId: string, status: OrderStatus) => set((state) => {
         const order = state.orders.find(o => o.id === orderId);
         if (order) {
+          // Store previous status for rollback
+          const previousStatus = order.status;
+          
+          // Optimistic update
           order.status = status;
+          order.isOptimistic = true;
+          
           if (status === 'completed') {
             order.estimatedCompletionTime = new Date();
           }
+          
           // Auto-save to IndexedDB
-          saveToStore('orders', order);
+          saveToStore('orders', order).catch((error) => {
+            // Rollback on error
+            console.error('Failed to save order status:', error);
+            set((state) => {
+              const rollbackOrder = state.orders.find(o => o.id === orderId);
+              if (rollbackOrder) {
+                rollbackOrder.status = previousStatus;
+                rollbackOrder.isOptimistic = false;
+              }
+            });
+            
+            if (window.showToast) {
+              window.showToast('error', 'Update Failed', 'Failed to update order status', 3000);
+            }
+          });
+          
+          // Remove optimistic flag after a delay
+          setTimeout(() => {
+            set((state) => {
+              const updatedOrder = state.orders.find(o => o.id === orderId);
+              if (updatedOrder) {
+                updatedOrder.isOptimistic = false;
+              }
+            });
+          }, 300);
         }
       }),
 

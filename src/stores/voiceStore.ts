@@ -280,6 +280,7 @@ function parseVoiceCommand(text: string): VoiceAction {
 
 function extractParameters(text: string): Record<string, any> {
   const params: Record<string, any> = {};
+  const lowerText = text.toLowerCase();
   
   // Extract table numbers
   const tableMatch = text.match(/table\s*(\d+)/i);
@@ -288,9 +289,9 @@ function extractParameters(text: string): Record<string, any> {
   }
   
   // Extract item names (simplified - in real app would use fuzzy matching)
-  const items = ['paneer', 'dal', 'rice', 'naan', 'chai', 'lassi'];
+  const items = ['paneer', 'dal', 'rice', 'naan', 'chai', 'lassi', 'samosa', 'tikka'];
   for (const item of items) {
-    if (text.toLowerCase().includes(item)) {
+    if (lowerText.includes(item)) {
       params.itemName = item;
       break;
     }
@@ -300,6 +301,17 @@ function extractParameters(text: string): Record<string, any> {
   const quantityMatch = text.match(/(\d+)\s*(plate|glass|cup)/i);
   if (quantityMatch) {
     params.quantity = parseInt(quantityMatch[1]);
+  }
+  
+  // Extract navigation targets
+  if (lowerText.includes('dashboard') || lowerText.includes('home')) {
+    params.page = 'dashboard';
+  } else if (lowerText.includes('kitchen') || lowerText.includes('किचन')) {
+    params.page = 'kitchen';
+  } else if (lowerText.includes('waiter') || lowerText.includes('वेटर')) {
+    params.page = 'waiter';
+  } else if (lowerText.includes('menu') || lowerText.includes('मेन्यू')) {
+    params.page = 'menu';
   }
   
   return params;

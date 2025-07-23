@@ -15,6 +15,8 @@ import { MetricCard } from '@/components/ui/MetricCard';
 import { VoiceButton } from '@/components/voice/VoiceButton';
 import { VoiceStatus } from '@/components/voice/VoiceStatus';
 import { VoiceHistory } from '@/components/voice/VoiceHistory';
+import { VoiceDemoMode } from '@/components/voice/VoiceDemoMode';
+import { VoiceTextInput } from '@/components/voice/VoiceTextInput';
 import { useOrderStore } from '@/stores/orderStore';
 import { useTableStore } from '@/stores/tableStore';
 import { useInventoryStore } from '@/stores/inventoryStore';
@@ -344,6 +346,58 @@ export default function DashboardPage() {
               </Card>
             </motion.div>
 
+            {/* Voice Command Examples */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.85 }}
+            >
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-gold" />
+                    Voice Commands
+                    <span className="text-sm font-normal text-foreground-muted font-devanagari">
+                      आवाज़ कमांड
+                    </span>
+                  </CardTitle>
+                  <div className="text-sm text-foreground-muted">
+                    Try saying these commands
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2 text-sm">
+                    <div className="p-2 bg-background-secondary rounded-lg">
+                      <div className="font-medium text-saffron mb-1">Orders:</div>
+                      <div className="space-y-1 text-foreground-muted">
+                        <div>• &quot;Table 5 ready hai&quot;</div>
+                        <div>• &quot;Table 3 ka order preparing&quot;</div>
+                        <div>• &quot;Mark table 2 order ready&quot;</div>
+                      </div>
+                    </div>
+                    
+                    <div className="p-2 bg-background-secondary rounded-lg">
+                      <div className="font-medium text-emerald mb-1">Tables:</div>
+                      <div className="space-y-1 text-foreground-muted">
+                        <div>• &quot;Table 4 clean karo&quot;</div>
+                        <div>• &quot;Table 6 occupied hai&quot;</div>
+                        <div>• &quot;Mark table 1 available&quot;</div>
+                      </div>
+                    </div>
+                    
+                    <div className="p-2 bg-background-secondary rounded-lg">
+                      <div className="font-medium text-gold mb-1">Queries:</div>
+                      <div className="space-y-1 text-foreground-muted">
+                        <div>• &quot;Today's revenue kitna hai&quot;</div>
+                        <div>• &quot;How many orders today&quot;</div>
+                        <div>• &quot;Table 5 ka status&quot;</div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
             {/* Voice History */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -355,6 +409,12 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+      
+      {/* Voice Demo Mode for unsupported browsers */}
+      <VoiceDemoMode />
+      
+      {/* Manual Text Input Fallback */}
+      <VoiceTextInput />
     </div>
   );
 }

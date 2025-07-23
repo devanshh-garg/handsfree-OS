@@ -175,14 +175,19 @@ export class VoiceProcessor {
     for (let i = event.resultIndex; i < event.results.length; i++) {
       const result = event.results[i];
       const transcript = result[0].transcript;
-      const confidence = result[0].confidence;
+      const confidence = result[0].confidence || 0.9; // Default confidence if not provided
 
       if (result.isFinal) {
         finalTranscript += transcript;
         
+        console.log('Final transcript:', transcript, 'Confidence:', confidence);
+        
         // Process the final transcript
-        if (confidence >= this.config.confidenceThreshold) {
+        // Lower the threshold for testing (was 0.7)
+        if (confidence >= 0.5) {
           this.processTranscript(transcript, confidence, callback);
+        } else {
+          console.log('Confidence too low:', confidence);
         }
       } else {
         interimTranscript += transcript;
@@ -190,7 +195,8 @@ export class VoiceProcessor {
     }
 
     // Emit interim results for UI feedback
-    if (interimTranscript) {
+    if (interimTranscript && !finalTranscript) {
+      console.log('Interim transcript:', interimTranscript);
       callback({
         id: `interim-${Date.now()}`,
         command: interimTranscript,
@@ -208,17 +214,53 @@ export class VoiceProcessor {
     this.isProcessing = true;
 
     try {
-      // Wake word detection
-      if (!this.isWakeWordDetected(transcript)) {
+      // For development/testing: Allow commands without wake word if transcript is short
+      const isShortCommand = transcript.split(' ').length <= 10;
+      
+      // Wake word detection - skip for short commands in dev
+      if (!isShortCommand && !this.isWakeWordDetected(transcript)) {
+        console.log('Wake word not detected in:', transcript);
         return;
       }
 
       // Clean and normalize transcript
       const cleanTranscript = this.cleanTranscript(transcript);
+      console.log('Processing command:', cleanTranscript);
       
       // Parse the command using advanced NLP
       const action = this.parseAdvancedCommand(cleanTranscript);
       const parameters = this.extractAdvancedParameters(cleanTranscript);
+
+      // Check if command is understood
+      if (action.subtype === 'unknown' || confidence < 0.3) {
+        console.log('Low confidence or unknown command');
+        
+        // Speak "didn't catch that" response
+        const responses = [
+          "माफ करें, मुझे समझ नहीं आया। कृपया फिर से बोलें।",
+          "Sorry, I didn't catch that. Please try again.",
+          "कृपया फिर से बोलें, स्पष्ट नहीं सुनाई दिया।",
+          "Please repeat your command more clearly."
+        ];
+        
+        const response = responses[Math.floor(Math.random() * responses.length)];
+        await this.speakResponse(response);
+        
+        // Send retry prompt command
+        callback({
+          id: `cmd-retry-${Date.now()}`,
+          command: cleanTranscript,
+          language: this.detectLanguage(cleanTranscript),
+          confidence,
+          timestamp: new Date(),
+          action: { type: 'query', subtype: 'retry' },
+          parameters: {},
+          success: false,
+          response: response
+        });
+        
+        return;
+      }
 
       const command: VoiceCommand = {
         id: `cmd-${Date.now()}`,
@@ -231,13 +273,29 @@ export class VoiceProcessor {
         success: true
       };
 
+      console.log('Parsed command:', { action, parameters });
+      
+      // Call the callback to process the command
       callback(command);
       
       // Provide voice feedback
-      this.speakResponse(this.generateResponse(command));
+      await this.speakResponse(this.generateResponse(command));
 
     } catch (error) {
       console.error('Error processing transcript:', error);
+      
+      // Still call callback with error command
+      callback({
+        id: `cmd-error-${Date.now()}`,
+        command: transcript,
+        language: this.detectLanguage(transcript),
+        confidence,
+        timestamp: new Date(),
+        action: { type: 'query', subtype: 'error' },
+        parameters: {},
+        success: false,
+        response: 'Sorry, I could not process that command'
+      });
     } finally {
       this.isProcessing = false;
     }

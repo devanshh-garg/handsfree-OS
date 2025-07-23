@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import dynamic from 'next/dynamic';
 import "./globals.css";
+
+// Import ToastContainer dynamically to avoid SSR issues
+const ToastContainer = dynamic(
+  () => import('@/components/ui/Toast').then(mod => mod.ToastContainer),
+  { ssr: false }
+);
 
 const inter = Inter({
   subsets: ["latin"],
@@ -34,6 +41,7 @@ export default function RootLayout({
       </head>
       <body className={`${inter.variable} antialiased`}>
         {children}
+        <ToastContainer />
       </body>
     </html>
   );

@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Recognition Test - HandsFree OS</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #ff9500;
+            text-align: center;
+        }
+        
+        .button {
+            background: #ff9500;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 50px;
+            cursor: pointer;
+            display: block;
+            margin: 30px auto;
+            transition: all 0.3s;
+        }
+        
+        .button:hover {
+            background: #e08400;
+            transform: scale(1.05);
+        }
+        
+        .button.listening {
+            background: #28a745;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        .status {
+            text-align: center;
+            margin: 20px 0;
+            font-size: 16px;
+            color: #666;
+        }
+        
+        .transcript {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+            min-height: 100px;
+            border: 2px solid #dee2e6;
+        }
+        
+        .commands {
+            margin: 30px 0;
+        }
+        
+        .command-group {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        
+        .command-group h3 {
+            margin: 0 0 10px 0;
+            color: #495057;
+        }
+        
+        .command-example {
+            margin: 5px 0;
+            color: #6c757d;
+        }
+        
+        .error {
+            color: #dc3545;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .success {
+            color: #28a745;
+            text-align: center;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 HandsFree OS Voice Test</h1>
+        
+        <p class="status" id="status">Click the button to start voice recognition</p>
+        
+        <button class="button" id="voiceButton" onclick="toggleVoice()">
+            Start Listening
+        </button>
+        
+        <div class="transcript">
+            <strong>What you said:</strong>
+            <div id="transcript">Waiting for voice input...</div>
+        </div>
+        
+        <div id="result"></div>
+        
+        <div class="commands">
+            <h2>Try These Commands:</h2>
+            
+            <div class="command-group">
+                <h3>🍽️ Order Commands:</h3>
+                <div class="command-example">• "Table 5 ready hai"</div>
+                <div class="command-example">• "Table 3 ka order preparing"</div>
+                <div class="command-example">• "Mark table 2 order ready"</div>
+            </div>
+            
+            <div class="command-group">
+                <h3>🪑 Table Commands:</h3>
+                <div class="command-example">• "Table 4 clean karo"</div>
+                <div class="command-example">• "Table 6 occupied hai"</div>
+                <div class="command-example">• "Mark table 1 available"</div>
+            </div>
+            
+            <div class="command-group">
+                <h3>📊 Query Commands:</h3>
+                <div class="command-example">• "Today's revenue kitna hai"</div>
+                <div class="command-example">• "How many orders today"</div>
+                <div class="command-example">• "Table 5 ka status"</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let recognition = null;
+        let isListening = false;
+
+        // Initialize speech recognition
+        function initSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            
+            if (!SpeechRecognition) {
+                document.getElementById('status').innerHTML = '<span class="error">❌ Speech recognition not supported in this browser. Please use Chrome or Edge.</span>';
+                document.getElementById('voiceButton').disabled = true;
+                return;
+            }
+
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'hi-IN'; // Hindi/Indian English
+
+            recognition.onstart = () => {
+                isListening = true;
+                document.getElementById('voiceButton').classList.add('listening');
+                document.getElementById('voiceButton').textContent = 'Stop Listening';
+                document.getElementById('status').innerHTML = '<span class="success">🎤 Listening... Speak now!</span>';
+                document.getElementById('transcript').textContent = '';
+            };
+
+            recognition.onresult = (event) => {
+                let finalTranscript = '';
+                let interimTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript + ' ';
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+
+                document.getElementById('transcript').innerHTML = 
+                    '<strong>Final:</strong> ' + (finalTranscript || 'Waiting...') + 
+                    '<br><strong>Hearing:</strong> ' + interimTranscript;
+
+                if (finalTranscript) {
+                    processCommand(finalTranscript.trim());
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                document.getElementById('status').innerHTML = `<span class="error">❌ Error: ${event.error}</span>`;
+                
+                if (event.error === 'not-allowed') {
+                    document.getElementById('status').innerHTML += '<br>Please allow microphone access and reload the page.';
+                }
+                
+                stopListening();
+            };
+
+            recognition.onend = () => {
+                stopListening();
+            };
+        }
+
+        function toggleVoice() {
+            if (!recognition) {
+                initSpeechRecognition();
+            }
+
+            if (isListening) {
+                stopListening();
+            } else {
+                startListening();
+            }
+        }
+
+        async function startListening() {
+            try {
+                // Request microphone permission
+                await navigator.mediaDevices.getUserMedia({ audio: true });
+                recognition.start();
+            } catch (error) {
+                console.error('Microphone access error:', error);
+                document.getElementById('status').innerHTML = '<span class="error">❌ Microphone access denied. Please allow microphone permissions.</span>';
+            }
+        }
+
+        function stopListening() {
+            if (recognition && isListening) {
+                recognition.stop();
+            }
+            isListening = false;
+            document.getElementById('voiceButton').classList.remove('listening');
+            document.getElementById('voiceButton').textContent = 'Start Listening';
+            document.getElementById('status').innerHTML = 'Click the button to start voice recognition';
+        }
+
+        function processCommand(transcript) {
+            console.log('Processing command:', transcript);
+            
+            const lower = transcript.toLowerCase();
+            let action = '';
+            let response = '';
+
+            // Parse the command
+            if (lower.includes('ready') || lower.includes('तैयार')) {
+                const tableMatch = lower.match(/table\s*(\d+)|टेबल\s*(\d+)/);
+                const tableNumber = tableMatch ? (tableMatch[1] || tableMatch[2]) : '?';
+                action = `Mark Table ${tableNumber} Order as Ready`;
+                response = `✅ Table ${tableNumber} का order ready mark कर दिया गया है`;
+            } else if (lower.includes('preparing') || lower.includes('बन रहा')) {
+                const tableMatch = lower.match(/table\s*(\d+)|टेबल\s*(\d+)/);
+                const tableNumber = tableMatch ? (tableMatch[1] || tableMatch[2]) : '?';
+                action = `Mark Table ${tableNumber} Order as Preparing`;
+                response = `🍳 Table ${tableNumber} का order preparing में move कर दिया गया है`;
+            } else if (lower.includes('clean') || lower.includes('साफ')) {
+                const tableMatch = lower.match(/table\s*(\d+)|टेबल\s*(\d+)/);
+                const tableNumber = tableMatch ? (tableMatch[1] || tableMatch[2]) : '?';
+                action = `Mark Table ${tableNumber} for Cleaning`;
+                response = `🧹 Table ${tableNumber} को cleaning के लिए mark कर दिया गया है`;
+            } else if (lower.includes('occupied') || lower.includes('व्यस्त')) {
+                const tableMatch = lower.match(/table\s*(\d+)|टेबल\s*(\d+)/);
+                const tableNumber = tableMatch ? (tableMatch[1] || tableMatch[2]) : '?';
+                action = `Mark Table ${tableNumber} as Occupied`;
+                response = `👥 Table ${tableNumber} को occupied mark कर दिया गया है`;
+            } else if (lower.includes('revenue') || lower.includes('कितना')) {
+                action = 'Query Today\&apos;s Revenue';
+                response = `💰 आज का revenue ₹45,250 है`;
+            } else if (lower.includes('orders') || lower.includes('ऑर्डर')) {
+                action = 'Query Order Count';
+                response = `📋 आज 127 orders आए हैं`;
+            } else {
+                action = 'Unknown Command';
+                response = '❓ Sorry, I didn\&apos;t understand that command. Please try again.';
+            }
+
+            // Display the result
+            document.getElementById('result').innerHTML = `
+                <div class="command-group">
+                    <h3>Recognized Command:</h3>
+                    <div><strong>Action:</strong> ${action}</div>
+                    <div><strong>Response:</strong> ${response}</div>
+                </div>
+            `;
+
+            // Speak the response
+            const utterance = new SpeechSynthesisUtterance(response);
+            utterance.lang = 'hi-IN';
+            speechSynthesis.speak(utterance);
+        }
+
+        // Initialize on page load
+        window.onload = () => {
+            initSpeechRecognition();
+        };
+    </script>
+</body>
+</html>

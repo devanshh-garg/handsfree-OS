@@ -56,6 +56,7 @@ export interface Order {
   customerName?: string;
   waiterName: string;
   kitchenNotes?: string;
+  isOptimistic?: boolean;
 }
 
 export interface OrderItem {
